@@ -25,15 +25,16 @@ public class DB {
 	}
 	
 	public static Connection getConnection() {
-		if (conn == null) {
 			try {
+				if (conn == null || conn.isClosed()){
 				String url = props.getProperty("dburl");
 				conn = DriverManager.getConnection(url, props);
+				}
 			}
 			catch (SQLException e) {
 				throw new DbException(e.getMessage());
 			}
-		}
+
 		return conn;
 	}
 	
@@ -62,6 +63,9 @@ public class DB {
 				conn.close();
 			} catch (SQLException e) {
 				throw new DbException(e.getMessage());
+			}
+			finally{
+				conn = null;
 			}
 		}
 	}
