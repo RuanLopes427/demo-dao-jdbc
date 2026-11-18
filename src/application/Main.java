@@ -11,8 +11,9 @@ public static void main(String[] args) {
     DepartmentDao departmentDao = DaoFactory.createDepartmentDao();
     SellerDao sellerDao = DaoFactory.createSellerDao();
 
-    Department Automotive = new Department(5, "Automotive");
-
-    departmentDao.insert(Automotive);
-
+    System.out.println(departmentDao.findAll());
+    System.out.println();
+    System.out.println(sellerDao.findAll());
+    System.out.println();
+    System.out.println(sellerDao.findById(1));
 }

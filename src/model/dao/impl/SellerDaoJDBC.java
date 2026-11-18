@@ -2,12 +2,15 @@ package model.dao.impl;
 
 import db.DB;
 import db.DbException;
+import model.dao.DaoFactory;
+import model.dao.DepartmentDao;
 import model.dao.SellerDao;
 import model.entities.Department;
 import model.entities.Seller;
 
 import java.sql.*;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SellerDaoJDBC implements SellerDao {
@@ -19,7 +22,6 @@ public class SellerDaoJDBC implements SellerDao {
 
         try{
             conn = DB.getConnection();
-            conn.setAutoCommit(false);
 
             st = conn.prepareStatement(
                     "INSERT INTO seller(Id, Name, Email, BirthDate, BaseSalary, DepartmentId)" +
@@ -38,7 +40,6 @@ public class SellerDaoJDBC implements SellerDao {
             st.setInt(6, obj.getDepartment().getId());
             st.executeUpdate();
 
-            conn.commit();
         }
         catch (SQLException e){
             throw new DbException(e.getMessage());
@@ -48,77 +49,147 @@ public class SellerDaoJDBC implements SellerDao {
 
     @Override
     public void update(Seller obj) {
+        Connection conn = null;
+        PreparedStatement st = null;
 
+        try{
+            conn = DB.getConnection();
+            st = conn.prepareStatement(
+                    "UPDATE seller " +
+                            "SET Name = ?, Email = ?, BirthDate = ?, BaseSalary = ?, DepartmentId = ? " +
+                            "WHERE Id = ?;"
+            );
+
+            st.setString(1, obj.getName());
+            st.setString(2, obj.getEmail());
+            st.setDate(3, Date.valueOf(obj.getBirthDate()));
+            st.setDouble(4, obj.getBaseSalary());
+            st.setInt(5, obj.getDepartment().getId());
+            st.setInt(6, obj.getId());
+
+            st.executeUpdate();
+        }
+        catch(SQLException e){
+            throw new DbException(e.getMessage());
+        }
+        finally{
+            DB.closeStatement(st);
+            DB.closeConnection();
+        }
     }
 
     @Override
     public void deleteById(Integer id) {
-
-    }
-
-
-    @Override
-    public Seller findById(Integer id) {
-
         Connection conn = null;
         PreparedStatement st = null;
-        ResultSet rs = null;
 
-        try {
+        try{
             conn = DB.getConnection();
-
             st = conn.prepareStatement(
-                    "SELECT s.*, d.Name AS DepName " +
-                            "FROM seller s " +
-                            "INNER JOIN department d " +
-                            "ON s.DepartmentId = d.Id " +
-                            "WHERE s.Id = ?"
+                    "DELETE FROM seller WHERE Id = ?"
             );
 
             st.setInt(1, id);
 
-            rs = st.executeQuery();
-
-            if (rs.next()) {
-
-                Integer sellerId = rs.getInt("Id");
-                String name = rs.getString("Name");
-                String email = rs.getString("Email");
-
-                java.sql.Date sqlDate = rs.getDate("BirthDate");
-                LocalDate birthDate = (sqlDate != null)
-                        ? sqlDate.toLocalDate()
-                        : null;
-
-                Double baseSalary = rs.getDouble("BaseSalary");
-                Integer departmentId = rs.getInt("DepartmentId");
-                String depName = rs.getString("DepName");
-
-                return new Seller(
-                        sellerId,
-                        name,
-                        email,
-                        birthDate,
-                        baseSalary,
-                        new Department(departmentId, depName)
-                );
-            }
-
-            return null;
+            st.executeUpdate();
         }
-        catch (SQLException e) {
+        catch (SQLException e){
             throw new DbException(e.getMessage());
         }
-        finally {
+        finally{
+            DB.closeStatement(st);
+            DB.closeConnection();
+        }
+    }
+
+    @Override
+    public Seller findById(Integer id) {
+            Connection conn = null;
+            PreparedStatement st = null;
+            ResultSet rs = null;
+
+            try {
+                conn = DB.getConnection();
+
+                st = conn.prepareStatement(
+                        "SELECT s.*, d.Name AS DepName " +
+                                "FROM seller s " +
+                                "INNER JOIN department d " +
+                                "ON s.DepartmentId = d.Id " +
+                                "WHERE s.Id = ?"
+                );
+
+                st.setInt(1, id);
+
+                rs = st.executeQuery();
+
+                if (rs.next()) {
+                    return instanceSeller(rs);
+                }
+
+                return null;
+            }
+            catch (SQLException e) {
+                throw new DbException(e.getMessage());
+            }
+            finally {
+                DB.closeResultSet(rs);
+                DB.closeStatement(st);
+                DB.closeConnection();
+            }
+    }
+
+    @Override
+    public List<Seller> findAll() {
+
+        List<Seller> list = new ArrayList<>();
+        Connection conn = null;
+        Statement st = null;
+        ResultSet rs = null;
+
+        try {
+            conn = DB.getConnection();
+            st = conn.createStatement();
+            rs = st.executeQuery("SELECT s.*, d.Name AS depName " +
+                    "FROM seller s " +
+                    "INNER JOIN department d " +
+                    "ON s.DepartmentId = d.Id");
+
+
+            while (rs.next()) {
+                list.add(instanceSeller(rs));
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage());
+        } finally {
             DB.closeResultSet(rs);
             DB.closeStatement(st);
             DB.closeConnection();
         }
     }
 
+    public Seller instanceSeller(ResultSet rs) throws SQLException{
+        Integer sellerId = rs.getInt("Id");
+        String name = rs.getString("Name");
+        String email = rs.getString("Email");
 
-    @Override
-    public List<Seller> findAll() {
-        return List.of();
+        java.sql.Date sqlDate = rs.getDate("BirthDate");
+        LocalDate birthDate = (sqlDate != null)
+                ? sqlDate.toLocalDate()
+                : null;
+
+        Double baseSalary = rs.getDouble("BaseSalary");
+        Integer departmentId = rs.getInt("DepartmentId");
+        String depName = rs.getString("DepName");
+
+        return new Seller(
+                sellerId,
+                name,
+                email,
+                birthDate,
+                baseSalary,
+                new Department(departmentId, depName)
+        );
     }
 }
