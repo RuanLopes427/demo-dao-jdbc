@@ -17,7 +17,6 @@ public class DB {
 	static {
 		try (FileInputStream fs = new FileInputStream("db.properties")) {
 			props.load(fs);
-			String url = props.getProperty("dburl");
 		}
 		catch (IOException e) {
 			throw new DbException(e.getMessage());
